@@ -1,4 +1,4 @@
-local Version = 1.94
+local Version = 1.95
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -2997,6 +2997,90 @@ if Champion == nil and myHero.charName == 'Taric' then
         end
     end
 end
+
+if Champion == nil and myHero.charName == 'TahmKench' then
+    
+    -- menu
+    Menu.q_combo = Menu.q:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.q_harass = Menu.q:MenuElement({id = 'harass', name = 'Harass', value = true})
+    Menu.q_hitchance = Menu.q:MenuElement({id = 'hitchance', name = 'Hitchance', value = 1, drop = {'normal', 'high', 'immobile'}})
+		
+    Menu.w_combo = Menu.w:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.w_harass = Menu.w:MenuElement({id = 'harass', name = 'Harass', value = false})
+        
+    Menu.q_range = Menu.d:MenuElement({id = 'qrange', name = 'Q Range', value = true})
+    Menu.w_range = Menu.d:MenuElement({id = 'wrange', name = 'W Range', value = false})
+    
+    -- locals
+	local DEVOUR_BUFF_NAME = 'tahmkenchpdevourable'
+	local Q_RANGE_COLOR = Draw.Color(190, 50, 205, 50)
+	local W_RANGE_COLOR = Draw.Color(190, 0, 0, 205)
+	local QGGPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 70, Range = 900, Speed = 2800, Type = GGPrediction.SPELLTYPE_LINE, Collision = true, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION}})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 0})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.23, w = 0.23, e = 0, r = 0})
+        end
+    }
+    -- tick
+    function Champion:OnTick()
+        self:WLogic()
+        self:QLogic()
+    end
+    -- draw
+    function Champion:OnDraw()
+        self:DrawRange()
+    end    
+	-- q logic
+    function Champion:QLogic()
+		if not((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
+            return
+        end
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0, r = 0}) then
+            return
+        end
+		local enemies = Utils:GetEnemyHeroes(1000)
+		for _, hero in ipairs(enemies) do
+			QGGPrediction:GetPrediction(hero, myHero)
+			if QGGPrediction:CanHit(Menu.q_hitchance:Value() + 1) then
+				Control.CastSpell(HK_Q, QGGPrediction.CastPosition)
+				return
+			end
+		end
+    end
+    -- w logic
+    function Champion:WLogic()
+		if not((self.IsCombo and Menu.w_combo:Value()) or (self.IsHarass and Menu.w_harass:Value())) then
+            return
+        end
+        if not GG_Spell:IsReady(_W, {q = 0, w = 1, e = 0, r = 0}) then
+            return
+        end
+		local enemies = Utils:GetEnemyHeroes(325)
+			for _, hero in ipairs(enemies) do
+				local wbuff = GG_Buff:GetBuff(hero, DEVOUR_BUFF_NAME)
+				if wbuff and wbuff.count >=1 then
+					Utils:Cast(HK_W, hero.pos)
+					return
+				end
+			end
+    end
+    -- draw range
+    function Champion:DrawRange()
+        if Menu.q_range:Value() and GG_Spell:IsReady(_Q, {q = 0, w = 0, e = 0, r = 0}) then
+			Draw.Circle(myHero.pos, 900, 1, Q_RANGE_COLOR)
+        end
+		if Menu.w_range:Value() and GG_Spell:IsReady(_W, {q = 0, w = 0, e = 0, r = 0}) then
+			Draw.Circle(myHero.pos, 325, 1, W_RANGE_COLOR)
+        end
+    end
+end
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     -- Q
