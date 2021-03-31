@@ -3081,6 +3081,66 @@ if Champion == nil and myHero.charName == 'TahmKench' then
     end
 end
 
+
+if Champion == nil and myHero.charName == 'Braum' then
+    
+    -- menu
+    Menu.q_combo = Menu.q:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.q_harass = Menu.q:MenuElement({id = 'harass', name = 'Harass', value = true})
+    Menu.q_range = Menu.q:MenuElement({id = "qrange", name = "Q Range", value = 950, min = 50, max = 1000, step = 50})
+    Menu.q_hitchance = Menu.q:MenuElement({id = 'hitchance', name = 'Hitchance', value = 1, drop = {'normal', 'high', 'immobile'}})
+    
+    -- locals
+	local QRange = 950
+	local Q_RANGE_COLOR = Draw.Color(190, 50, 205, 50)
+	local QGGPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 70, Range = 950, Speed = 1700, Type = GGPrediction.SPELLTYPE_LINE, Collision = true, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION}})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0, r = 0})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.23, w = 0.23, e = 0, r = 0})
+        end
+    }
+    -- tick
+    function Champion:OnTick()
+		QRange = Menu.q_range:Value()
+		QGGPrediction.Range = QRange
+        self:QLogic()
+    end
+    -- draw
+    function Champion:OnDraw()
+        self:DrawRange()
+    end    
+	-- q logic
+    function Champion:QLogic()
+		if not((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
+            return
+        end
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0, r = 0}) then
+            return
+        end
+		local enemies = Utils:GetEnemyHeroes(QRange + 50)
+		
+		for _, hero in ipairs(enemies) do
+			QGGPrediction:GetPrediction(hero, myHero)
+			if QGGPrediction:CanHit(Menu.q_hitchance:Value() + 1) then
+				Control.CastSpell(HK_Q, QGGPrediction.CastPosition)
+				return
+			end
+		end
+    end
+    -- draw range
+    function Champion:DrawRange()
+        if Menu.q_range:Value() and GG_Spell:IsReady(_Q, {q = 0, w = 0, e = 0, r = 0}) then
+			Draw.Circle(myHero.pos, QRange, 1, Q_RANGE_COLOR)
+        end
+    end
+end
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     -- Q
