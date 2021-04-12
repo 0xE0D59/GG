@@ -3141,6 +3141,80 @@ if Champion == nil and myHero.charName == 'Braum' then
     end
 end
 
+
+if Champion == nil and myHero.charName == 'Shaco' then
+    
+    -- menu
+    Menu.e_ks_enabled = Menu.e:MenuElement({id = 'ekillsteal', name = 'Killsteal', value = true})
+    Menu.e_ks_backstab = Menu.e:MenuElement({id = 'ekillstealbackstab', name = 'Include Backstab', value = true})
+    Menu.e_ks_collector = Menu.e:MenuElement({id = 'ekillstealcollector', name = 'Include Collector', value = true})
+	
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0, w = 0.2, e = 0.2, r = 0.5})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0, w = 0.2, e = 0.2, r = 0.5})
+        end
+    }
+    -- tick
+    function Champion:OnTick()
+        self:ELogic()
+    end
+    -- draw
+    function Champion:OnDraw()
+    end    
+	function Champion:HasCollector(unit)
+		return SDK.ItemManager:HasItem(unit, 6676)
+	end
+	-- q logic
+    function Champion:ELogic()
+		if not Menu.e_ks_enabled:Value() then
+			return
+		end
+		if not GG_Spell:IsReady(_E, {q = 0, w = 0.1, e = 1, r = 0.3}) then
+            return
+        end
+        local basedmg = 45
+        local lvldmg = 25 * myHero:GetSpellData(_E).level
+        local statdmg = myHero.ap * 0.55 + myHero.bonusDamage * 0.7
+        local edmg = basedmg + lvldmg + statdmg
+        if edmg < 50 then
+            return
+        end
+		local behindDmg = 15 + (35 / 17 * (myHero.levelData.lvl - 1)) + myHero.ap * 0.1
+		local etargets = Utils:GetEnemyHeroes(625)
+        for i, unit in ipairs(etargets) do
+            local health = unit.health + unit.hpRegen
+			local extraDamage = 0
+			if Menu.e_ks_backstab:Value() and not GG_Object:IsFacing(unit, myHero) then
+				extraDamage = extraDamage + behindDmg
+			end
+			local dmg = GG_Damage:CalculateDamage(myHero, unit, DAMAGE_TYPE_MAGICAL, edmg + extraDamage)
+			local hpPercent = health / unit.maxHealth
+			if hpPercent < 0.3 then
+				dmg = dmg * 1.5
+			end
+            if health > 10 then 
+			    if health < dmg then
+					Utils:Cast(HK_E, unit)
+					--print("E KS cast on "..unit.charName)
+					--print("HP: "..health.." HP%:"..hpPercent.." CalcDmg: "..dmg.." SkillDmg: "..(edmg+extraDamage))
+					return
+				end
+				if ((health - dmg) / unit.maxHealth) <= 0.05 and Menu.e_ks_collector:Value() and Champion:HasCollector(myHero) then
+					Utils:Cast(HK_E, unit)
+					--print("E KS cast on "..unit.charName)
+					--print("Collector kill")
+					--print("HP: "..health.." HP%:"..hpPercent.." CalcDmg: "..dmg.." SkillDmg: "..(edmg+extraDamage))
+				end
+            end
+        end
+    end
+end
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     -- Q
